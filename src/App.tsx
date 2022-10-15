@@ -1,24 +1,22 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
-
+import { HashRouter, Routes } from 'react-router-dom';
+import { useModal } from './logic/context/ModalContext';
+import { Modal, Toolbar } from './visual/components/features';
+import Footer from './visual/components/features/Footer';
+import routing from './visual/routing';
 function App() {
+  const modal = useModal()
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+      {modal.content && <Modal />}
+      <HashRouter>
+        <Toolbar />
+        <Routes>
+          {React.Children.toArray(routing.map(route => route.toRoute()))}
+        </Routes>
+        <Footer />  
+      </HashRouter>
+
     </div>
   );
 }
