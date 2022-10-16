@@ -4,7 +4,6 @@ import { PageHolder } from "../components/wrappers"
 import { Stack, Text } from "../styles"
 import { textColorDark2 } from "../styles"
 import Tree from '../assets/TreeVectorSet/Vector 38.svg'
-import { Image } from "@mantine/core"
 export const ISBETA = true
 export class PickUSSubRoute {
     element: React.ReactNode
