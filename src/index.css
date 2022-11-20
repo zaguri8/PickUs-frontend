@@ -30,6 +30,9 @@ html {
   background: #E9EDEC;
 }
 
+button {
+  font-family: Open Sans Hebrew;
+}
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;

@@ -43,7 +43,6 @@ const FooterColumn = ({ children }: { children: React.ReactNode }) => <Stack
 
 
 const FooterWrapper = styled.div`
-    position:relative;
     bottom:0;
     direction:ltr;
     width:100%;
@@ -53,12 +52,13 @@ const FooterWrapper = styled.div`
     display:grid;
     grid-template-rows:1fr;
     grid-template-columns:repeat(4,1fr);
-
+    height:50vh;
     @media only screen and (max-width:${smallScreenMinSize}) {
         grid-template-rows:repeat(4,1fr);
         grid-template-columns:1fr;
         padding-top:0px;
         height:fit-content;
+        position:relative;
     }
 `
 

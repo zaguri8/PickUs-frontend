@@ -2,12 +2,15 @@ export class Lead {
     name: string
     phone: string
     start: string
+    developer: boolean
     destination: string
     date: string
     comments: string
     passengers: string
-    departureTime: string
-    backTime: string
+    departureTime_h: string
+    backTime_h: string
+    departureTime_m: string
+    backTime_m: string
     constructor() {
         this.name = ""
         this.phone = ""
@@ -15,15 +18,28 @@ export class Lead {
         this.start = ""
         this.date = ""
         this.passengers = ""
-        this.departureTime = ""
-        this.backTime = ""
+        this.developer = false
+        this.departureTime_h = ""
+        this.backTime_h = ""
+        this.departureTime_m = ""
+        this.backTime_m = ""
         this.comments = ""
+    }
+    departureTime() {
+        return this.departureTime_h.concat(`:$${this.departureTime_m}`)
+    }
+    backTime() {
+        return this.backTime_h.concat(`:$${this.backTime_m}`)
     }
 }
 export class LeadBuilder {
     private lead: Lead = new Lead()
     name(name: string) {
         this.lead.name = name
+        return this
+    }
+    developer() {
+        this.lead.developer = true
         return this
     }
     phone(phone: string) {
@@ -52,11 +68,19 @@ export class LeadBuilder {
         return this
     }
     departureTime(departureTime: string) {
-        this.lead.departureTime = departureTime
+        if (departureTime.indexOf(":") === -1)
+            return this
+        const [h, m] = departureTime.split(":")
+        this.lead.departureTime_m = m
+        this.lead.departureTime_h = h
         return this
     }
     backTime(backTime: string) {
-        this.lead.backTime = backTime
+        if (backTime.indexOf(":") === -1)
+            return this
+        const [h, m] = backTime.split(":")
+        this.lead.backTime_m = m
+        this.lead.backTime_h = h
         return this
     }
     build() {
@@ -377,8 +401,10 @@ export type qPNPRideParams = qPNPAbstractRideParams & {
 
 
 
-export type CompanyDateConfirmations = {date: string,
-     confirmations: (PNPCompanyRideConfirmation & {dateObject:Date})[] }
+export type CompanyDateConfirmations = {
+    date: string,
+    confirmations: (PNPCompanyRideConfirmation & { dateObject: Date })[]
+}
 
 export type CompanyConfirmationsMapping = {
     [ride: string]: CompanyDateConfirmations[]

@@ -1,6 +1,6 @@
 import { DatePicker, TimeInput } from "@mantine/dates"
 import { IconBus, IconCalendar, IconLoader, IconMan, IconNote, IconSend } from "@tabler/icons"
-import React, { CSSProperties, useCallback, useState } from "react"
+import React, { CSSProperties, useCallback, useEffect, useState } from "react"
 import { useUser } from "../../../logic/context/Firebase"
 import { useModal } from "../../../logic/context/ModalContext"
 import { LeadBuilder } from "../../../logic/types"
@@ -8,6 +8,7 @@ import { Button, Form, greenColor, Input, ModalContentStyle, ModalWrapperStyle, 
 import { UserMenu } from "../wrappers"
 import { Loader } from "@mantine/core"
 import { useNavigate } from "react-router"
+import useLeadRequests from "../../../logic/hooks/useLeadRequests"
 const useLeadBuilder = () => {
     const [leadBuilder, setLead] = useState<LeadBuilder>(new LeadBuilder())
     const [stage, setStage] = useState<number>(1)
@@ -15,23 +16,40 @@ const useLeadBuilder = () => {
         setLead(leadBuilder)
         setStage(s => s + 1)
     }
-    return { updateLead, leadBuilder, stage }
+    return { updateLead, leadBuilder, stage, setStage }
 }
-
+// to date string
+const toDateString = (date: Date) => {
+    const day = date.getDate()
+    const month = date.getMonth() + 1
+    const year = date.getFullYear()
+    return `${day}/${month}/${year}`
+}
 
 const LeadScene = () => {
 
-    const { updateLead, stage, leadBuilder } = useLeadBuilder()
-
-    const { user, signInPopUp } = useUser()
-    const LeadInput = useCallback(({ title, type = "text", required = false }: Partial<HTMLInputElement>) => <Input padding={8}
-        height={'35px'}
-        paddingBlock={18}
-        type={type}
-        required={required}
-        placeholder={title}
-        width={'100%'}
-        style={{ minWidth: '100%' }} />,
+    const {
+        updateLead,
+        stage,
+        leadBuilder,
+        setStage
+    } = useLeadBuilder()
+    const { user } = useUser()
+    const {
+        sendSMSRequest,
+        sendStartFillingRequest,
+        sendLeftPageRequest
+    } = useLeadRequests()
+    const LeadInput = useCallback(({ title,
+        type = "text",
+        required = false }: Partial<HTMLInputElement>) => <Input padding={8}
+            height={'35px'}
+            paddingBlock={18}
+            type={type}
+            required={required}
+            placeholder={title}
+            width={'100%'}
+            style={{ minWidth: '100%' }} />,
         [leadBuilder]
     )
     const [date, setDate] = useState<Date | null>(new Date())
@@ -65,30 +83,65 @@ const LeadScene = () => {
         }
     }, [stage, leadBuilder, date])
 
+
+    const callback = useCallback(async (s: number = stage) => {
+        const lead = leadBuilder.build()
+        if (lead.phone) {
+            try {
+                await sendLeftPageRequest(lead)
+            } catch (e) { console.log(e) }
+        }
+    }, [stage, leadBuilder])
+
+    useEffect(() => {
+        window.addEventListener('unload', callback as any)
+        return () => {
+            callback()
+            window.removeEventListener('unload', callback as any)
+        }
+    }, [])
+
+
     const Submit = useCallback((e: any) => {
         e.preventDefault()
         switch (stage) {
             case 1:
-                updateLead(leadBuilder.name(e.target[0].value)
-                    .phone(e.target[1].value))
+                const name = e.target[0].value
+                const phone = e.target[1].value
+                updateLead(leadBuilder.name(name)
+                    .phone(phone))
+                sendStartFillingRequest({
+                    name,
+                    phone
+                })
                 break;
             case 2:
                 updateLead(leadBuilder.start(e.target[0].value)
                     .destination(e.target[1].value))
                 break;
             case 3:
-                updateLead(leadBuilder.date(e.target[0].value)
-                    .departureTime(e.target[1].value)
-                    .backTime(e.target[2].value))
+                updateLead(leadBuilder.date(toDateString(new Date(e.target[0].value)))
+                    .departureTime(e.target[2].value)
+                    .backTime(e.target[3].value))
                 break;
             case 4:
                 updateLead(leadBuilder.passengers(e.target[0].value)
                     .comments(e.target[1].value))
                 break;
             case 5: {
-                if (!user) {
-                    signInPopUp()
-                }
+                setStage(6);
+                (async () => {
+                    try {
+                        const result = await sendSMSRequest(
+                            leadBuilder.build()
+                        )
+                        alert(result)
+                        window.location.reload()
+                    } catch (e) {
+                        alert(e)
+                        setStage(5)
+                    }
+                })()
             }
                 break;
         }
@@ -104,7 +157,7 @@ const LeadScene = () => {
             <hr style={TimeLineStyle} />
         </Stack>
     }, [stage])
-    const LeadDetails = useCallback(() => stage === 5 ? (function () {
+    const LeadDetails = useCallback(() => stage >= 5 ? (function () {
         const lead = leadBuilder.build()
         return <Stack direction="column" rowGap={4}
             alignment={'center'}
@@ -112,11 +165,11 @@ const LeadScene = () => {
             style={{ borderRadius: '8px', boxShadow: boxShadowLight }} padding={4}>
             <Text><b>שם:</b> {lead.name}</Text>
             <Text><b>מס טלפון:</b> {lead.phone}</Text>
-            <Text><b>נק' יציאה:</b> {lead.departureTime}</Text>
-            <Text><b>נק' חזרה:</b> {lead.departureTime}</Text>
+            <Text><b>נק' יציאה:</b> {lead.start}</Text>
+            <Text><b>נק' חזרה:</b> {lead.destination}</Text>
             <Text><b>תאריך נסיעה:</b> {lead.date}</Text>
-            <Text><b>שעת יציאה:</b> {lead.departureTime}</Text>
-            <Text><b>שעת חזרה:</b> {lead.backTime}</Text>
+            <Text><b>שעת יציאה:</b> {lead.departureTime()}</Text>
+            <Text><b>שעת חזרה:</b> {lead.backTime()}</Text>
             <Text><b>מספר נוסעים:</b> {lead.passengers}</Text>
             <Text><b>הערות:</b> {lead.comments}</Text>
         </Stack>
@@ -133,6 +186,7 @@ const LeadScene = () => {
         <Button
             fontSize={18}
             padding={8}
+            disabled={stage === 6}
             width={'80%'}
             margin={8}
             background={greenColor}
@@ -140,7 +194,7 @@ const LeadScene = () => {
             fontWeight={'bold'}
             alignSelf={'center'}
             type={'submit'}>
-            {stage === 5 ? 'שלח' : 'הבא'}
+            {stage > 5 ? <Loader color={'black'} width={25} height={25} /> : stage === 5 ? 'שלח' : 'הבא'}
         </Button>
         <LeadTimeLine />
     </Form>
